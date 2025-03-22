@@ -12,7 +12,7 @@ camera.position.z = 5;
 
 // --- Text Rendering ---
 
-// Function to create text geometry (modified to accept random positions)
+// Function to create text geometry
 function createText(text, size, height, x, y, z) {
     const loader = new THREE.FontLoader();
     const group = new THREE.Group();
@@ -33,64 +33,57 @@ function createText(text, size, height, x, y, z) {
     return group;
 }
 
-
-// Target word (now an array to manage multiple words)
-let targetWords = [];
+// --- Game Variables ---
+let targetWord = null; // Single target word
 const words = ["threejs", "typing", "game", "javascript", "webgl"];
+let typedWord = "";
+let typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0); // Keep typed word at a fixed position
+let score = 0;
+const scoreDisplay = document.getElementById('score-display');
+
+// --- Game Logic ---
 
 // Function to add a new target word
 function addTargetWord() {
+    if (targetWord) return; // Ensure only one target word at a time
+
     const word = words[Math.floor(Math.random() * words.length)];
     const x = (Math.random() * 4) - 2; // Random x between -2 and 2
-    const y = (Math.random() * 2) - 1; // Random y between -1 and 1
+    const y = -2; // Start at the bottom
     const group = createText(word, 0.5, 0.1, x, y, 0);
-    targetWords.push({ word: word, group: group });
+    targetWord = { word: word, group: group, speed: 0.01 + Math.random() * 0.02 }; // Add speed
 }
-
-// Initialize with a few words
-addTargetWord();
-addTargetWord();
-addTargetWord();
-
-
-// Typed word (initially empty)
-let typedWord = "";
-let typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0); // Keep typed word at a fixed position
-
-
-// --- Game Logic ---
 
 // Function to update the typed word
 function updateTypedWord(char) {
     typedWord += char;
-    scene.remove(typedWordGroup); // Remove the old text
-    typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0); // Create new text, fixed position
+    scene.remove(typedWordGroup);
+    typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
 }
 
 // Function to check if the typed word matches the target word
 function checkWord() {
-    let wordMatched = false; // Flag to track if any matches were found
-    for (let i = 0; i < targetWords.length; i++) {
-        if (typedWord === targetWords[i].word) {
-            // Correct word typed!
-            console.log("Correct!");
-            wordMatched = true; // Set the flag
+    if (targetWord && typedWord === targetWord.word) {
+        // Correct word typed!
+        console.log("Correct!");
+        score++;
+        scoreDisplay.textContent = "Score: " + score;
 
-            // Disappear after a delay
-            setTimeout(() => {
-                scene.remove(targetWords[i].group);
-                targetWords.splice(i, 1); // Remove from the array
-                addTargetWord(); // Add a new word immediately
-                i--; // Decrement i to account for the removed element
-            }, 500); // 500ms delay
-        } else if (targetWords[i].word.startsWith(typedWord)) {
-            // Still typing a correct word, no need to do anything else here
-            wordMatched = true;
-        }
+        // Remove the word immediately (no delay)
+        scene.remove(targetWord.group);
+        targetWord = null;
+
+        // Reset typed word
+        typedWord = "";
+        scene.remove(typedWordGroup);
+        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
+        addTargetWord(); // Add a new word
+
+    } else if (targetWord && targetWord.word.startsWith(typedWord)) {
+        // Keep typing...
     }
-
-        // Reset typed word only if a match happened or if it's an incorrect entry
-    if (wordMatched || typedWord.length > 0 ) {
+     else if (typedWord.length > 0){
+        // Incorrect input: Reset typed word
         typedWord = "";
         scene.remove(typedWordGroup);
         typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
@@ -103,11 +96,11 @@ document.addEventListener('keydown', (event) => {
     const key = event.key;
 
     // Only handle alphanumeric keys and backspace
-    if (key.length === 1) { // Single character (a-z, 0-9, etc.)
+    if (key.length === 1) {
         updateTypedWord(key);
         checkWord();
     } else if (key === 'Backspace') {
-        typedWord = typedWord.slice(0, -1); // Remove last character
+        typedWord = typedWord.slice(0, -1);
         scene.remove(typedWordGroup);
         typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
         checkWord();
@@ -118,6 +111,24 @@ document.addEventListener('keydown', (event) => {
 
 function animate() {
     requestAnimationFrame(animate);
+
+    // Move and remove the target word
+    if (targetWord) {
+        targetWord.group.position.y += targetWord.speed;
+
+        // Remove if it goes off-screen
+        if (targetWord.group.position.y > 2) {
+            scene.remove(targetWord.group);
+            targetWord = null;
+            addTargetWord(); // Add a new word
+        }
+    }
+
+    // Add a new word if there isn't one
+    if (!targetWord) {
+        addTargetWord();
+    }
+
     renderer.render(scene, camera);
 }
 animate(); 
