@@ -12,7 +12,7 @@ camera.position.z = 5;
 
 // --- Text Rendering ---
 
-// Function to create text geometry
+// Function to create text geometry (modified to accept random positions)
 function createText(text, size, height, x, y, z) {
     const loader = new THREE.FontLoader();
     const group = new THREE.Group();
@@ -34,13 +34,28 @@ function createText(text, size, height, x, y, z) {
 }
 
 
-// Target word
-let targetWord = "threejs";
-let targetWordGroup = createText(targetWord, 0.5, 0.1, -2, 1, 0);
+// Target word (now an array to manage multiple words)
+let targetWords = [];
+const words = ["threejs", "typing", "game", "javascript", "webgl"];
+
+// Function to add a new target word
+function addTargetWord() {
+    const word = words[Math.floor(Math.random() * words.length)];
+    const x = (Math.random() * 4) - 2; // Random x between -2 and 2
+    const y = (Math.random() * 2) - 1; // Random y between -1 and 1
+    const group = createText(word, 0.5, 0.1, x, y, 0);
+    targetWords.push({ word: word, group: group });
+}
+
+// Initialize with a few words
+addTargetWord();
+addTargetWord();
+addTargetWord();
+
 
 // Typed word (initially empty)
 let typedWord = "";
-let typedWordGroup = createText(typedWord, 0.3, 0.05, -2, 0, 0);
+let typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0); // Keep typed word at a fixed position
 
 
 // --- Game Logic ---
@@ -49,37 +64,45 @@ let typedWordGroup = createText(typedWord, 0.3, 0.05, -2, 0, 0);
 function updateTypedWord(char) {
     typedWord += char;
     scene.remove(typedWordGroup); // Remove the old text
-    typedWordGroup = createText(typedWord, 0.3, 0.05, -2, 0, 0); // Create new text
+    typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0); // Create new text, fixed position
 }
 
 // Function to check if the typed word matches the target word
 function checkWord() {
-    if (typedWord === targetWord) {
-        // Correct word typed!
-        console.log("Correct!");
-        // Reset
-        typedWord = "";
-        scene.remove(typedWordGroup);
-        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, 0, 0);
+    for (let i = 0; i < targetWords.length; i++) {
+        if (typedWord === targetWords[i].word) {
+            // Correct word typed!
+            console.log("Correct!");
 
-        // Get a new target word (for now, just cycle through some words)
-        const words = ["threejs", "typing", "game", "javascript", "webgl"];
-        targetWord = words[(words.indexOf(targetWord) + 1) % words.length];
-        scene.remove(targetWordGroup);
-        targetWordGroup = createText(targetWord, 0.5, 0.1, -2, 1, 0);
+            // Disappear after a delay
+            setTimeout(() => {
+                scene.remove(targetWords[i].group);
+                targetWords.splice(i, 1); // Remove from the array
+                addTargetWord(); // Add a new word immediately
+            }, 500); // 500ms delay
 
-    } else if (targetWord.startsWith(typedWord)) {
-        // Still typing the correct word
-        console.log("Keep typing...");
+            // Reset typed word
+            typedWord = "";
+            scene.remove(typedWordGroup);
+            typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
+            return; // Important: Exit the loop after a match is found
+
+        } else if (targetWords[i].word.startsWith(typedWord)) {
+            // Still typing the correct word
+            console.log("Keep typing...");
+            return; //optimization
+        }
     }
-     else {
-        // Incorrect word
+
+    //if we get here, no match was found
+    if(typedWord.length > 0) { //avoid empty strings
         console.log("Incorrect!");
         // Reset typed word
         typedWord = "";
         scene.remove(typedWordGroup);
-        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, 0, 0);
+        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
     }
+
 }
 
 // --- Event Listener ---
@@ -94,7 +117,7 @@ document.addEventListener('keydown', (event) => {
     } else if (key === 'Backspace') {
         typedWord = typedWord.slice(0, -1); // Remove last character
         scene.remove(typedWordGroup);
-        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, 0, 0);
+        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
         checkWord();
     }
 });
