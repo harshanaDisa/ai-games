@@ -316,7 +316,7 @@
         const categoryDisplay = document.getElementById('category-display');
 
         // Game feedback visual effects
-        const feedbackGroup = new THREE.Group();
+        let feedbackGroup = new THREE.Group();
         scene.add(feedbackGroup);
 
         let wordTimeout; 
@@ -444,12 +444,13 @@
 
         // Visual feedback animations
         function showFeedback(message, color, duration = 2000) {
-            scene.remove(feedbackGroup);
-            feedbackGroup = new THREE.Group();
+            // Remove all children from the feedbackGroup
+            while(feedbackGroup.children.length > 0) {
+                feedbackGroup.remove(feedbackGroup.children[0]);
+            }
             
             const feedbackText = createText(message, 0.8, 0.2, 0, 0, 0, color);
             feedbackGroup.add(feedbackText);
-            scene.add(feedbackGroup);
             
             // Animate the feedback (fade out)
             let startTime = Date.now();
@@ -459,7 +460,10 @@
                     feedbackGroup.position.y = Math.sin(elapsed / 200) * 0.1;
                     requestAnimationFrame(animateFeedback);
                 } else {
-                    scene.remove(feedbackGroup);
+                    // Remove children instead of removing the group
+                    while(feedbackGroup.children.length > 0) {
+                        feedbackGroup.remove(feedbackGroup.children[0]);
+                    }
                 }
             }
             
