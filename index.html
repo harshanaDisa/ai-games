@@ -208,7 +208,7 @@
 
         // --- Asset Loading (Moved and corrected) ---
         function loadAssets() {
-            // Car Model (Using local file)
+            // Car Model (Using local file, with repo name)
             loader.load('ID0jC9X.glb', (gltf) => {
                 playerCar = gltf.scene;
                 playerCar.scale.set(0.2, 0.2, 0.2);
@@ -223,7 +223,7 @@
                 assetLoaded(); // Count as loaded even on error
             });
 
-            // Obstacle Model (Using local file)
+            // Obstacle Model (Using local file, with repo name)
             loader.load('9p6zDwa.glb', (gltf) => {
                 obstacleModel = gltf.scene;
                 obstacleModel.scale.set(0.5, 0.5, 0.5);
