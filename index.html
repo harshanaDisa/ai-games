@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeminiCart (Three.js)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #loadingScreen, #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            text-align: center;
+        }
+        #loadingScreen { display: flex; } /* Initially visible */
+        #startScreen, #gameOverScreen { display: none; }
+
+        #loadingProgress {
+            margin-top: 10px;
+            width: 80%;
+            height: 20px;
+            border: 1px solid white;
+        }
+        #progressBar {
+            height: 100%;
+            background-color: limegreen;
+            width: 0;
+        }
+
+        #startScreen h1, #gameOverScreen h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+         #startScreen p, #gameOverScreen p {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .startButton, .restartButton {
+            padding: 10px 20px;
+            font-size: 1.5em;
+            background-color: limegreen;
+            color: black;
+            border: none;
+            cursor: pointer;
+        }
+        #scoreDisplay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 20px;
+            font-family: sans-serif;
+            z-index: 5;
+        }
+        #highScoreDisplay { /* Style for the high score display */
+          position: absolute;
+          top: 40px; /* Position below the score */
+          left: 10px;
+          color: white;
+          font-size: 20px;
+          font-family: sans-serif;
+          z-index: 5;
+      }
+
+    </style>
+</head>
+<body>
+    <div id="loadingScreen">
+        <h1>Loading GeminiCart...</h1>
+        <div id="loadingProgress">
+            <div id="progressBar"></div>
+        </div>
+    </div>
+
+    <div id="startScreen">
+        <h1>GeminiCart</h1>
+        <p>Use arrow keys to control the car.</p>
+        <button class="startButton">Start Game</button>
+    </div>
+
+      <div id="gameOverScreen">
+        <h1>Game Over</h1>
+        <p id="finalScore"></p>
+        <button class="restartButton">Restart</button>
+    </div>
+
+
+    <div id="scoreDisplay">Score: 0</div>
+    <div id="highScoreDisplay">High Score: 0</div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+
+        // --- Loading Management ---
+        const loadingScreen = document.getElementById('loadingScreen');
+        const progressBar = document.getElementById('progressBar');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');  // Get high score element
+        const finalScoreDisplay = document.getElementById('finalScore');
+
+        let assetsToLoad = 2; // Number of assets (car and obstacle)
+        let assetsLoaded = 0;
+        let highScore = localStorage.getItem('geminiCartHighScore') || 0; // Load high score
+        highScoreDisplay.textContent = `High Score: ${highScore}`;
+
+        function updateLoadingProgress(progress) {
+            progressBar.style.width = `${progress * 100}%`;
+        }
+        function hideLoadingScreen() { loadingScreen.style.display = 'none'; }
+        function showStartScreen() { startScreen.style.display = 'flex'; }
+        function showGameOverScreen() { gameOverScreen.style.display = 'flex'; }
+
+        function assetLoaded() {
+          assetsLoaded++;
+          updateLoadingProgress(assetsLoaded / assetsToLoad);
+            if (assetsLoaded === assetsToLoad) {
+                hideLoadingScreen();
+                showStartScreen();  // Go to start screen after loading.
+            }
+        }
+
+        // --- Scene Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true }); // Antialiasing
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        renderer.shadowMap.enabled = true;  // Enable shadows
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+
+
+        // --- Game State ---
+        let gameState = "loading"; // loading, start, playing, gameover
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Soft white ambient light
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Stronger directional light
+        directionalLight.position.set(0, 5, 5); // Position the light
+        directionalLight.castShadow = true; // Enable shadow casting
+          // Adjust shadow camera properties for better shadows
+        directionalLight.shadow.mapSize.width = 1024;  // Higher resolution
+        directionalLight.shadow.mapSize.height = 1024;
+        directionalLight.shadow.camera.near = 0.5;     // Reduce clipping
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -20; // Wider shadow area
+        directionalLight.shadow.camera.right = 20;
+        directionalLight.shadow.camera.top = 20;
+        directionalLight.shadow.camera.bottom = -20;
+        scene.add(directionalLight);
+
+
+
+        // --- Road ---
+        const roadWidth = 5;
+        const roadLength = 100;
+        const roadGeometry = new THREE.PlaneGeometry(roadWidth, roadLength);
+        const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Grey
+        const road = new THREE.Mesh(roadGeometry, roadMaterial);
+        road.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+        road.position.y = 0; // Road at ground level
+        road.receiveShadow = true;  // Road receives shadows
+        scene.add(road);
+
+
+        // --- Player ---
+        let playerCar;  // Will hold the loaded car model
+        let player = {
+          x: 0,
+          speed: 0.2,
+          modelLoaded: false, // Track if the model is loaded
+        };
+
+        const loader = new GLTFLoader();
+
+        // --- Asset Loading (Moved and corrected) ---
+        function loadAssets() {
+            // Car Model (Using Imgur URL)
+            loader.load('https://i.imgur.com/ID0jC9X.glb', (gltf) => {
+                playerCar = gltf.scene;
+                playerCar.scale.set(0.2, 0.2, 0.2);
+                playerCar.rotation.y = Math.PI;
+                playerCar.position.y = 0.2;
+                playerCar.castShadow = true;
+                scene.add(playerCar);
+                player.modelLoaded = true;
+                assetLoaded();
+            }, undefined, (error) => {
+                console.error('Error loading car model:', error);
+                assetLoaded(); // Count as loaded even on error
+            });
+
+            // Obstacle Model (Using Imgur URL)
+            loader.load('https://i.imgur.com/9p6zDwa.glb', (gltf) => {
+                obstacleModel = gltf.scene;
+                obstacleModel.scale.set(0.5, 0.5, 0.5);
+                obstacleModel.castShadow = true;
+                assetLoaded();
+            }, undefined, (error) => {
+                console.error('Error loading obstacle model:', error);
+                assetLoaded();
+            });
+        }
+
+
+        // --- Obstacles ---
+        let obstacles = [];
+        let obstacleSpeed = 0.2;
+        let obstacleModel;
+
+
+
+
+        function createObstacle() {
+          if (!obstacleModel) return;
+
+          const obstacle = obstacleModel.clone(); // Clone the loaded model
+          const lane = Math.floor(Math.random() * 3) - 1; // -1, 0, 1 for left, center, right
+          obstacle.position.x = lane * (roadWidth / 3);
+          obstacle.position.z = -roadLength / 2; // Start at the far end of the road
+          obstacle.position.y = 0.45; // adjust hieght
+            obstacles.push(obstacle);
+          scene.add(obstacle);
+        }
+
+        // --- Input Handling ---
+        let keys = {
+            ArrowLeft: false,
+            ArrowRight: false,
+            ArrowUp: false,    // Added
+            ArrowDown: false   // Added
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = true;
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+            }
+        });
+
+        // --- Camera Positioning ---
+        camera.position.set(0, 5, 10); // Slightly elevated and behind
+        camera.lookAt(0, 0, 0);       // Look towards the road
+
+
+        // --- Score ---
+        let score = 0;
+        let startTime;
+
+        // --- Collision Detection ---
+          function checkCollisions() {
+              if (!playerCar) return;
+
+              const playerBox = new THREE.Box3().setFromObject(playerCar);
+
+              for (let i = 0; i < obstacles.length; i++) {
+                  const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
+                  if (playerBox.intersectsBox(obstacleBox)) {
+                      endGame(); // End the game on collision
+                      return; // Exit to avoid multiple collisions
+                  }
+              }
+          }
+
+
+        // --- Game Logic ---
+      function update() {
+        if (gameState !== "playing") return;
+
+        if (!player.modelLoaded) return;  // Don't update until model is loaded
+
+            // Move player
+          if (keys.ArrowLeft) {
+            player.x -= player.speed * 0.5;
+          }
+          if (keys.ArrowRight) {
+            player.x += player.speed * 0.5;
+          }
+          if(keys.ArrowUp){ //Speed up
+            obstacleSpeed += 0.005;
+            player.speed += 0.001;
+          }
+          if(keys.ArrowDown){
+            obstacleSpeed -= 0.005;
+             player.speed -= 0.001;
+            if (obstacleSpeed < 0) obstacleSpeed = 0;  // Prevent negative speed
+            if(player.speed < 0) player.speed = 0;
+          }
+
+            // Clamp player position to the road
+          const roadEdge = roadWidth / 2 - 0.5; // Assuming car width of about 1 unit
+          player.x = THREE.MathUtils.clamp(player.x, -roadEdge, roadEdge);
+          playerCar.position.x = player.x
+
+            // Move obstacles
+          for (let i = 0; i < obstacles.length; i++) {
+            obstacles[i].position.z += obstacleSpeed;
+            if (obstacles[i].position.z > 5) { //  past the camera
+              scene.remove(obstacles[i]);
+              obstacles.splice(i, 1);
+              i--;
+            }
+          }
+
+            // Spawn obstacles
+          if (Math.random() < 0.02) { // 2% chance per frame
+                createObstacle();
+          }
+
+            checkCollisions();
+
+            // Update score
+            const currentTime = Date.now();
+            score = Math.floor((currentTime - startTime) / 10);
+            scoreDisplay.textContent = `Score: ${score}`;
+
+        }
+
+        // --- Render Loop ---
+        function animate() {
+           if (gameState === "playing") {
+              update();
+            }
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+
+
+        // --- Event Listeners ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+
+        // --- Start Game ---
+        function startGame() {
+            gameState = "playing";
+            resetGame();  // Reset for a fresh start
+            startTime = Date.now(); // Set/reset start time
+            animate(); // Start the animation/render loop
+        }
+
+        document.querySelector('.startButton').addEventListener('click', () => {
+          startScreen.style.display = 'none';
+          startGame();
+        });
+
+
+        // --- Reset Game ---
+        function resetGame() {
+           // Reset player position and speed
+          player.x = 0;
+          player.speed = 0.2;
+          if (playerCar) {
+              playerCar.position.x = 0;  // Reset car's visual position
+          }
+
+            // Remove all obstacles
+            for (const obstacle of obstacles) {
+                scene.remove(obstacle);
+            }
+            obstacles = [];
+
+            // Reset score and obstacle speed
+            score = 0;
+            obstacleSpeed = 0.2;
+            startTime = Date.now();
+
+            scoreDisplay.textContent = `Score: ${score}`; //reset visual score
+             highScoreDisplay.textContent = `High Score: ${highScore}`; // keep high score.
+
+        }
+
+         function endGame() {
+            gameState = "gameover";
+            finalScoreDisplay.textContent = `Your Score: ${score}`
+            showGameOverScreen();
+
+
+              // Update high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('geminiCartHighScore', highScore);
+                highScoreDisplay.textContent = `High Score: ${highScore}`;
+            }
+        }
+
+
+        document.querySelector('.restartButton').addEventListener('click', () => {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        });
+
+
+
+        // --- Initial setup ---
+        loadAssets(); // Start loading. Now correctly called.
+
+
+    </script>
+</body>
+</html>// Original:
+// 'https://i.imgur.com/ID0jC9X.glb'
+// With proxy:
+'https://cors-anywhere.herokuapp.com/https://i.imgur.com/ID0jC9X.glb'
