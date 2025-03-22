@@ -209,7 +209,7 @@
         // --- Asset Loading (Moved and corrected) ---
         function loadAssets() {
             // Car Model (Using local file)
-            loader.load('./ID0jC9X.glb', (gltf) => {
+            loader.load('ID0jC9X.glb', (gltf) => {
                 playerCar = gltf.scene;
                 playerCar.scale.set(0.2, 0.2, 0.2);
                 playerCar.rotation.y = Math.PI;
@@ -224,7 +224,7 @@
             });
 
             // Obstacle Model (Using local file)
-            loader.load('./9p6zDwa.glb', (gltf) => {
+            loader.load('9p6zDwa.glb', (gltf) => {
                 obstacleModel = gltf.scene;
                 obstacleModel.scale.set(0.5, 0.5, 0.5);
                 obstacleModel.castShadow = true;
