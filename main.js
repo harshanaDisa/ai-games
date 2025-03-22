@@ -69,40 +69,32 @@ function updateTypedWord(char) {
 
 // Function to check if the typed word matches the target word
 function checkWord() {
+    let wordMatched = false; // Flag to track if any matches were found
     for (let i = 0; i < targetWords.length; i++) {
         if (typedWord === targetWords[i].word) {
             // Correct word typed!
             console.log("Correct!");
+            wordMatched = true; // Set the flag
 
             // Disappear after a delay
             setTimeout(() => {
                 scene.remove(targetWords[i].group);
                 targetWords.splice(i, 1); // Remove from the array
                 addTargetWord(); // Add a new word immediately
+                i--; // Decrement i to account for the removed element
             }, 500); // 500ms delay
-
-            // Reset typed word
-            typedWord = "";
-            scene.remove(typedWordGroup);
-            typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
-            return; // Important: Exit the loop after a match is found
-
         } else if (targetWords[i].word.startsWith(typedWord)) {
-            // Still typing the correct word
-            console.log("Keep typing...");
-            return; //optimization
+            // Still typing a correct word, no need to do anything else here
+            wordMatched = true;
         }
     }
 
-    //if we get here, no match was found
-    if(typedWord.length > 0) { //avoid empty strings
-        console.log("Incorrect!");
-        // Reset typed word
+        // Reset typed word only if a match happened or if it's an incorrect entry
+    if (wordMatched || typedWord.length > 0 ) {
         typedWord = "";
         scene.remove(typedWordGroup);
         typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
     }
-
 }
 
 // --- Event Listener ---
