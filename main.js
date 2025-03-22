@@ -35,7 +35,87 @@ function createText(text, size, height, x, y, z) {
 
 // --- Game Variables ---
 let targetWord = null; // Single target word
-const words = ["threejs", "typing", "game", "javascript", "webgl"];
+const words = [
+    // Tiere (Animals)
+    "Hund", // dog
+    "Katze", // cat
+    "Maus", // mouse
+    "Vogel", // bird
+    "Fisch", // fish
+    "Pferd", // horse
+    "Kuh", // cow
+    "Schwein", // pig
+    "Affe", // monkey
+    "Bär", // bear
+
+    // Gegenstände (Objects)
+    "Ball", // ball
+    "Buch", // book
+    "Stift", // pen
+    "Tisch", // table
+    "Stuhl", // chair
+    "Haus", // house
+    "Auto", // car
+    "Baum", // tree
+    "Blume", // flower
+    "Sonne", // sun
+    "Mond", // moon
+    "Stern", // star
+
+    // Farben (Colors)
+    "rot", // red
+    "blau", // blue
+    "grün", // green
+    "gelb", // yellow
+    "schwarz", // black
+    "weiß", // white
+    "braun", // brown
+    "rosa", // pink
+
+    // Familie (Family)
+    "Mama", // mom
+    "Papa", // dad
+    "Bruder", // brother
+    "Schwester", // sister
+    "Oma", // grandma
+    "Opa", // grandpa
+
+    // Essen (Food)
+    "Brot", // bread
+    "Milch", // milk
+    "Apfel", // apple
+    "Banane", // banana
+    "Käse", // cheese
+    "Ei", // egg
+    "Saft", // juice
+    "Wasser", // water
+
+    //Verben
+    "sehen", //see
+    "laufen", //run
+    "spielen", //play
+    "essen", //eat
+    "trinken", //drink
+    "singen", //sing
+    "malen", //paint
+    "lesen", //read
+    "schreiben", //write
+    "lachen", //laugh
+
+     // Simple Sentences, combining words from above
+    "Ich sehe.",       // I see.
+    "Du siehst.",      // You see.
+    "Ich laufe.",      // I run.
+    "Du läufst.",     // You run.
+    "Ich spiele.",     // I play.
+    "Ich esse.",       // I eat.
+    "Ich trinke.",     // I drink.
+    "Ich singe.",      // I sing.
+    "Ich male.",       // I paint/draw.
+    "Ich lese.",       // I read.
+    "Ich schreibe.",   // I write.
+    "Ich lache.",      // I laugh.
+];
 let typedWord = "";
 let typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0); // Keep typed word at a fixed position
 let score = 0;
