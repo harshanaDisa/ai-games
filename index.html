@@ -542,6 +542,9 @@
         // Function to check if the typed word matches the target word
         function checkWord() {
             if (targetWord && typedWord === targetWord.word) {
+                // Create explosion at the target word's position
+                createExplosion(targetWord.group.position, getCategoryColor(targetWord.word));
+                
                 // Correct word typed!
                 console.log("Correct!");
                 score++;
@@ -563,7 +566,6 @@
                 typedWord = "";
                 updateTypedWordDisplay();
                 scheduleNextWord();
-
             } else if (targetWord && targetWord.word.startsWith(typedWord)) {
                 // Keep typing...
                 // Pause scrolling for time based on level
@@ -648,11 +650,158 @@
                 typedWordGroup.position.y = Math.sin(Date.now() * 0.005) * 0.02;
             }
 
+            // Animate power-ups
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                const powerUp = powerUps[i];
+                powerUp.position.y += 0.01;
+                powerUp.rotation.y += 0.02;
+                powerUp.rotation.x += 0.01;
+                
+                // Remove if it goes off-screen
+                if (powerUp.position.y > 3) {
+                    scene.remove(powerUp);
+                    powerUps.splice(i, 1);
+                }
+            }
+
             renderer.render(scene, camera);
         }
 
-        // Start the game
-        scheduleNextWord();
+        // 1. Add power-ups that appear randomly
+        function createPowerUp() {
+            const powerUpTypes = [
+                { name: "Slow Time", color: 0x00ffff, effect: () => slowTimeEffect() },
+                { name: "Double Points", color: 0xffaa00, effect: () => doublePointsEffect() },
+                { name: "Word Hint", color: 0xff00ff, effect: () => wordHintEffect() }
+            ];
+            
+            const powerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+            const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: powerUp.color,
+                emissive: powerUp.color,
+                emissiveIntensity: 0.5,
+                shininess: 100
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(Math.random() * 4 - 2, -3, 0);
+            mesh.userData = { type: 'powerUp', effect: powerUp.effect, name: powerUp.name };
+            scene.add(mesh);
+            
+            return mesh;
+        }
+
+        // PowerUp effects
+        function slowTimeEffect() {
+            const originalSpeed = wordSpeed;
+            wordSpeed *= 0.5;
+            showFeedback("Slow Time!", 0x00ffff);
+            setTimeout(() => {
+                wordSpeed = originalSpeed;
+            }, 10000);
+        }
+
+        function doublePointsEffect() {
+            const originalScoreMultiplier = 1;
+            let scoreMultiplier = 2;
+            showFeedback("Double Points!", 0xffaa00);
+            setTimeout(() => {
+                scoreMultiplier = originalScoreMultiplier;
+            }, 15000);
+        }
+
+        function wordHintEffect() {
+            if (targetWord) {
+                showFeedback(targetWord.word[0] + "_".repeat(targetWord.word.length-1), 0xff00ff);
+            }
+        }
+
+        // 2. Add click interaction for powerups
+        let powerUps = [];
+        let powerUpInterval;
+
+        function startPowerUpSystem() {
+            powerUpInterval = setInterval(() => {
+                if (Math.random() < 0.3) { // 30% chance every interval
+                    powerUps.push(createPowerUp());
+                }
+            }, 10000); // Create a power-up chance every 10 seconds
+        }
+
+        // Add raycaster for detecting clicks on power-ups
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        document.getElementById('game-canvas').addEventListener('click', (event) => {
+            // Get mouse position
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            // Update the raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check for intersections with power-ups
+            const intersects = raycaster.intersectObjects(powerUps);
+            if (intersects.length > 0) {
+                const powerUp = intersects[0].object;
+                if (powerUp.userData && powerUp.userData.type === 'powerUp') {
+                    // Apply power-up effect
+                    powerUp.userData.effect();
+                    
+                    // Remove power-up
+                    scene.remove(powerUp);
+                    powerUps = powerUps.filter(p => p !== powerUp);
+                }
+            }
+        });
+
+        // 3. Add explosion effect when words are completed correctly
+        function createExplosion(position, color) {
+            const particleCount = 50;
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 0.2;
+                vertices.push(
+                    position.x + Math.cos(angle) * radius,
+                    position.y + Math.sin(angle) * radius,
+                    position.z
+                );
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            const material = new THREE.PointsMaterial({
+                size: 0.05,
+                color: color,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+            
+            // Animate and remove the explosion
+            let startTime = Date.now();
+            function animateExplosion() {
+                const elapsed = Date.now() - startTime;
+                if (elapsed < 1000) {
+                    particles.material.opacity = 1 - (elapsed / 1000);
+                    particles.rotation.z += 0.01;
+                    requestAnimationFrame(animateExplosion);
+                } else {
+                    scene.remove(particles);
+                }
+            }
+            
+            animateExplosion();
+        }
+
+        // Start the power-up system along with the game
+        startPowerUpSystem();
         animate();
     </script>
 </body>
