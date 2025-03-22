@@ -271,31 +271,65 @@
         const wordCategories = {
             animals: [
                 "Hund", "Katze", "Maus", "Vogel", "Fisch", 
-                "Pferd", "Kuh", "Schwein", "Affe", "Bär"
+                "Pferd", "Kuh", "Schwein", "Affe", "Bär",
+                // New animal words
+                "Elefant", "Giraffe", "Löwe", "Tiger", "Zebra",
+                "Kaninchen", "Hamster", "Eichhörnchen", "Fuchs", "Wolf",
+                "Adler", "Eule", "Pinguin", "Delfin", "Hai"
             ],
             objects: [
                 "Ball", "Buch", "Stift", "Tisch", "Stuhl", 
-                "Haus", "Auto", "Baum", "Blume", "Sonne", "Mond", "Stern"
+                "Haus", "Auto", "Baum", "Blume", "Sonne", "Mond", "Stern",
+                // New object words
+                "Telefon", "Computer", "Fenster", "Tür", "Uhr",
+                "Schlüssel", "Tasche", "Brille", "Schuh", "Hut",
+                "Lampe", "Kamera", "Gitarre", "Radio", "Fernseher"
             ],
             colors: [
                 "rot", "blau", "grün", "gelb", "schwarz", 
-                "weiß", "braun", "rosa"
+                "weiß", "braun", "rosa",
+                // New color words
+                "orange", "lila", "grau", "türkis", "beige",
+                "silber", "gold", "violett", "magenta"
             ],
             family: [
-                "Mama", "Papa", "Bruder", "Schwester", "Oma", "Opa"
+                "Mama", "Papa", "Bruder", "Schwester", "Oma", "Opa",
+                // New family words
+                "Tante", "Onkel", "Cousin", "Cousine", "Neffe",
+                "Nichte", "Ehemann", "Ehefrau", "Sohn", "Tochter"
             ],
             food: [
                 "Brot", "Milch", "Apfel", "Banane", "Käse", 
-                "Ei", "Saft", "Wasser"
+                "Ei", "Saft", "Wasser",
+                // New food words
+                "Kartoffel", "Reis", "Nudeln", "Fleisch", "Fisch",
+                "Suppe", "Salat", "Kuchen", "Schokolade", "Kaffee",
+                "Tee", "Zucker", "Salz", "Butter", "Pizza",
+                "Hamburger", "Erdbeere", "Orange", "Tomate", "Zwiebel"
             ],
             verbs: [
                 "sehen", "laufen", "spielen", "essen", "trinken",
-                "singen", "malen", "lesen", "schreiben", "lachen"
+                "singen", "malen", "lesen", "schreiben", "lachen",
+                // New verb words
+                "denken", "fühlen", "gehen", "kommen", "fahren",
+                "fliegen", "schwimmen", "kochen", "backen", "lernen",
+                "arbeiten", "schlafen", "tanzen", "sprechen", "hören"
+            ],
+            // New category: adjectives
+            adjectives: [
+                "groß", "klein", "alt", "jung", "schön",
+                "hässlich", "gut", "schlecht", "heiß", "kalt",
+                "schnell", "langsam", "stark", "schwach", "laut", 
+                "leise", "hell", "dunkel", "süß", "sauer"
             ],
             sentences: [
                 "Ich sehe.", "Du siehst.", "Ich laufe.", "Du läufst.",
                 "Ich spiele.", "Ich esse.", "Ich trinke.", "Ich singe.",
-                "Ich male.", "Ich lese.", "Ich schreibe.", "Ich lache."
+                "Ich male.", "Ich lese.", "Ich schreibe.", "Ich lache.",
+                // New sentences
+                "Wie geht es dir?", "Ich heiße...", "Guten Morgen!",
+                "Guten Tag!", "Guten Abend!", "Gute Nacht!", 
+                "Danke schön!", "Bitte schön!", "Auf Wiedersehen!"
             ]
         };
 
@@ -405,6 +439,7 @@
             if (wordCategories.family.includes(word)) return 0xff5555; // Red
             if (wordCategories.food.includes(word)) return 0xffff55; // Yellow
             if (wordCategories.verbs.includes(word)) return 0x55ffff; // Cyan
+            if (wordCategories.adjectives.includes(word)) return 0xff9933; // Orange
             if (wordCategories.sentences.includes(word)) return 0xffffff; // White
             return 0xffffff; // Default white
         }
@@ -417,20 +452,41 @@
             if (wordCategories.family.includes(word)) return "Familie (Family)";
             if (wordCategories.food.includes(word)) return "Essen (Food)";
             if (wordCategories.verbs.includes(word)) return "Verben (Verbs)";
+            if (wordCategories.adjectives.includes(word)) return "Adjektive (Adjectives)";
             if (wordCategories.sentences.includes(word)) return "Sätze (Sentences)";
             return "";
         }
 
-        // Function to add a new target word (modified for delayed addition)
+        // Function to add a new target word (modified for random positioning)
         function addTargetWord() {
             if (targetWord) return; // Ensure only one target word at a time
 
             const word = words[Math.floor(Math.random() * words.length)];
-            // TEMPORARY DEBUGGING: Hardcode x and y
-            const x = 0; // Center horizontally
-            const y = 0; // Center vertically
-            const group = createText(word, 0.5, 0.1, x, y, 0);
-            targetWord = { word: word, group: group, speed: 0.01 + Math.random() * 0.02, paused: false }; // Add speed and paused flag
+            
+            // Random horizontal position
+            const x = Math.random() * 4 - 2; // Random value between -2 and 2
+            
+            // Start at the bottom of the screen
+            const y = -2.5; // Start lower than the visible area
+            
+            // Display the category of the current word
+            currentCategory = getCategoryName(word);
+            categoryDisplay.textContent = "Category: " + currentCategory;
+            
+            const color = getCategoryColor(word);
+            const group = createText(word, 0.5, 0.1, x, y, 0, color);
+            
+            // Add the target word with appropriate color and random speed based on level
+            const baseSpeed = 0.01 + (level * 0.001);
+            const randomSpeed = baseSpeed + (Math.random() * 0.01); 
+            
+            targetWord = { 
+                word: word, 
+                group: group, 
+                speed: randomSpeed, 
+                paused: false,
+                color: color
+            };
         }
 
         // Function to schedule the next word with decreasing time intervals based on level
@@ -636,8 +692,9 @@
             if (targetWord && !targetWord.paused) {
                 targetWord.group.position.y += targetWord.speed;
                 
-                // Slight wavy motion
-                targetWord.group.position.x += Math.sin(Date.now() * 0.002) * 0.003;
+                // Slight wavy motion based on horizontal position
+                const waveMagnitude = 0.003;
+                targetWord.group.position.x += Math.sin(Date.now() * 0.002) * waveMagnitude;
 
                 // Remove if it goes off-screen
                 if (targetWord.group.position.y > 2.5) {
@@ -645,6 +702,11 @@
                     targetWord = null;
                     combo = 0; // Reset combo
                     comboDisplay.textContent = "Combo: " + combo;
+                    
+                    // Visual feedback for missed word
+                    showFeedback("Missed!", 0xff0000);
+                    if (wrongSound) wrongSound();
+                    
                     scheduleNextWord();
                 }
             }
