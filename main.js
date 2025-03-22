@@ -13,7 +13,7 @@ camera.position.z = 5;
 // --- Text Rendering ---
 
 // Function to create text geometry
-function createText(text, size, height, x, y, z) {
+function createText(text, size, height, x, y, z, color = 0xffffff) {
     const loader = new THREE.FontLoader();
     const group = new THREE.Group();
 
@@ -23,7 +23,7 @@ function createText(text, size, height, x, y, z) {
             size: size,
             height: height,
         });
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const textMaterial = new THREE.MeshBasicMaterial({ color: color });
         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
         textMesh.position.set(x, y, z);
@@ -117,10 +117,13 @@ const words = [
     "Ich lache.",      // I laugh.
 ];
 let typedWord = "";
-let typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0); // Keep typed word at a fixed position
+let typedWordGroup = new THREE.Group(); // Use a Group to hold individual letter meshes
+scene.add(typedWordGroup); // Add the group to the scene
 let score = 0;
 const scoreDisplay = document.getElementById('score-display');
 let wordTimeout; // Variable to store the timeout ID
+let pauseTimeout; // Timeout for pausing the scrolling
+let isPaused = false; // Flag to indicate if scrolling is paused
 
 // --- Game Logic ---
 
@@ -132,7 +135,7 @@ function addTargetWord() {
     const x = (Math.random() * 4) - 2; // Random x between -2 and 2
     const y = -2; // Start at the bottom
     const group = createText(word, 0.5, 0.1, x, y, 0);
-    targetWord = { word: word, group: group, speed: 0.01 + Math.random() * 0.02 }; // Add speed
+    targetWord = { word: word, group: group, speed: 0.01 + Math.random() * 0.02, paused: false }; // Add speed and paused flag
 }
 
 // Function to schedule the next word (NEW)
@@ -143,14 +146,39 @@ function scheduleNextWord() {
     }, 10000); // 10 seconds (10000 milliseconds)
 }
 
-// Function to update the typed word
+// Function to update the typed word (MODIFIED for coloring)
 function updateTypedWord(char) {
     typedWord += char;
-    scene.remove(typedWordGroup);
-    typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
+    updateTypedWordDisplay();
+    checkWord(); // Check after updating the display
 }
 
-// Function to check if the typed word matches the target word
+// Function to update the typed word display (NEW - for coloring)
+function updateTypedWordDisplay() {
+    scene.remove(typedWordGroup);
+    typedWordGroup = new THREE.Group(); // Create a new group
+    scene.add(typedWordGroup);
+
+    let xOffset = -2; // Starting x position for the typed word
+
+    for (let i = 0; i < typedWord.length; i++) {
+        let color = 0xffffff; // Default white
+
+        if (targetWord && i < targetWord.word.length) {
+            if (typedWord[i] === targetWord.word[i]) {
+                color = 0x00ff00; // Green for correct
+            } else {
+                color = 0xff0000; // Red for incorrect
+            }
+        }
+        // Create individual letter meshes
+        let letterGroup = createText(typedWord[i], 0.3, 0.05, xOffset, -2, 0, color);
+        typedWordGroup.add(letterGroup);
+        xOffset += 0.4; // Adjust spacing between letters
+    }
+}
+
+// Function to check if the typed word matches the target word (MODIFIED)
 function checkWord() {
     if (targetWord && typedWord === targetWord.word) {
         // Correct word typed!
@@ -164,19 +192,26 @@ function checkWord() {
 
         // Reset typed word
         typedWord = "";
-        scene.remove(typedWordGroup);
-        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
-        // addTargetWord(); // NO, don't add immediately
+        updateTypedWordDisplay(); // Clear the typed word display
         scheduleNextWord(); // Schedule the next word after 10 seconds
 
     } else if (targetWord && targetWord.word.startsWith(typedWord)) {
         // Keep typing...
+        // Pause scrolling for 10 seconds if not already paused
+        if (!isPaused) {
+            isPaused = true;
+            clearTimeout(pauseTimeout); // Clear any existing pause timeout
+            pauseTimeout = setTimeout(() => {
+                isPaused = false;
+                if(targetWord) targetWord.paused = false; // Resume scrolling
+            }, 10000);
+        }
+        if(targetWord) targetWord.paused = true;
     }
      else if (typedWord.length > 0){
         // Incorrect input: Reset typed word
         typedWord = "";
-        scene.remove(typedWordGroup);
-        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
+        updateTypedWordDisplay(); // Clear the typed word display
     }
 }
 
@@ -188,11 +223,9 @@ document.addEventListener('keydown', (event) => {
     // Only handle alphanumeric keys and backspace
     if (key.length === 1) {
         updateTypedWord(key);
-        checkWord();
     } else if (key === 'Backspace') {
         typedWord = typedWord.slice(0, -1);
-        scene.remove(typedWordGroup);
-        typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
+        updateTypedWordDisplay(); // Update display after backspace
         checkWord();
     }
 });
@@ -203,23 +236,15 @@ function animate() {
     requestAnimationFrame(animate);
 
     // Move and remove the target word
-    if (targetWord) {
+    if (targetWord && !targetWord.paused) {
         targetWord.group.position.y += targetWord.speed;
 
         // Remove if it goes off-screen
         if (targetWord.group.position.y > 2) {
             scene.remove(targetWord.group);
             targetWord = null;
-            //addTargetWord(); // NO, don't add immediately
             scheduleNextWord(); // Schedule the next word
         }
-    }
-
-    // Add a new word if there isn't one AND the timeout has triggered it
-    //  (This initial check is important for the *first* word)
-    if (!targetWord) {
-        // scheduleNextWord(); //NO
-        //Do nothing here, schedule next word takes care
     }
 
     renderer.render(scene, camera);
