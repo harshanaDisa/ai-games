@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeminiCart (Three.js)</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         body {
             margin: 0;
@@ -207,8 +208,8 @@
 
         // --- Asset Loading (Moved and corrected) ---
         function loadAssets() {
-            // Car Model (Using Imgur URL)
-            loader.load('https://i.imgur.com/ID0jC9X.glb', (gltf) => {
+            // Car Model (Using local file)
+            loader.load('./ID0jC9X.glb', (gltf) => {
                 playerCar = gltf.scene;
                 playerCar.scale.set(0.2, 0.2, 0.2);
                 playerCar.rotation.y = Math.PI;
@@ -222,8 +223,8 @@
                 assetLoaded(); // Count as loaded even on error
             });
 
-            // Obstacle Model (Using Imgur URL)
-            loader.load('https://i.imgur.com/9p6zDwa.glb', (gltf) => {
+            // Obstacle Model (Using local file)
+            loader.load('./9p6zDwa.glb', (gltf) => {
                 obstacleModel = gltf.scene;
                 obstacleModel.scale.set(0.5, 0.5, 0.5);
                 obstacleModel.castShadow = true;
@@ -437,7 +438,4 @@
 
     </script>
 </body>
-</html>// Original:
-// 'https://i.imgur.com/ID0jC9X.glb'
-// With proxy:
-'https://cors-anywhere.herokuapp.com/https://i.imgur.com/ID0jC9X.glb'
+</html>
