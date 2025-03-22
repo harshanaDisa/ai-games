@@ -120,10 +120,11 @@ let typedWord = "";
 let typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0); // Keep typed word at a fixed position
 let score = 0;
 const scoreDisplay = document.getElementById('score-display');
+let wordTimeout; // Variable to store the timeout ID
 
 // --- Game Logic ---
 
-// Function to add a new target word
+// Function to add a new target word (modified for delayed addition)
 function addTargetWord() {
     if (targetWord) return; // Ensure only one target word at a time
 
@@ -132,6 +133,14 @@ function addTargetWord() {
     const y = -2; // Start at the bottom
     const group = createText(word, 0.5, 0.1, x, y, 0);
     targetWord = { word: word, group: group, speed: 0.01 + Math.random() * 0.02 }; // Add speed
+}
+
+// Function to schedule the next word (NEW)
+function scheduleNextWord() {
+    clearTimeout(wordTimeout); // Clear any existing timeout
+    wordTimeout = setTimeout(() => {
+        addTargetWord();
+    }, 10000); // 10 seconds (10000 milliseconds)
 }
 
 // Function to update the typed word
@@ -157,7 +166,8 @@ function checkWord() {
         typedWord = "";
         scene.remove(typedWordGroup);
         typedWordGroup = createText(typedWord, 0.3, 0.05, -2, -2, 0);
-        addTargetWord(); // Add a new word
+        // addTargetWord(); // NO, don't add immediately
+        scheduleNextWord(); // Schedule the next word after 10 seconds
 
     } else if (targetWord && targetWord.word.startsWith(typedWord)) {
         // Keep typing...
@@ -200,15 +210,21 @@ function animate() {
         if (targetWord.group.position.y > 2) {
             scene.remove(targetWord.group);
             targetWord = null;
-            addTargetWord(); // Add a new word
+            //addTargetWord(); // NO, don't add immediately
+            scheduleNextWord(); // Schedule the next word
         }
     }
 
-    // Add a new word if there isn't one
+    // Add a new word if there isn't one AND the timeout has triggered it
+    //  (This initial check is important for the *first* word)
     if (!targetWord) {
-        addTargetWord();
+        // scheduleNextWord(); //NO
+        //Do nothing here, schedule next word takes care
     }
 
     renderer.render(scene, camera);
 }
+
+// Start the game with the first word after 10 seconds
+scheduleNextWord();
 animate(); 
