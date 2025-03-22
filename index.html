@@ -222,44 +222,40 @@
                 const textGeometry = new THREE.TextGeometry(text, {
                     font: font,
                     size: size,
-                    height: height,
-                    curveSegments: 12,
-                    bevelEnabled: true,
-                    bevelThickness: 0.03,
-                    bevelSize: 0.02,
+                    height: height * 0.2, // Reduce the depth of the text
+                    curveSegments: 4,     // Reduce curve segments for better performance
+                    bevelEnabled: false,  // Disable bevel for cleaner text
+                    bevelThickness: 0,
+                    bevelSize: 0,
                     bevelOffset: 0,
-                    bevelSegments: 5
+                    bevelSegments: 0
                 });
                 
                 textGeometry.center();
                 
-                // Create a more interesting material based on the color
-                let textMaterial;
-                if (color === 0x00ff00) { // Correct letters
-                    textMaterial = new THREE.MeshPhongMaterial({ 
-                        color: color,
-                        emissive: 0x003300,
-                        shininess: 100,
-                        specular: 0x111111
-                    });
-                } else if (color === 0xff0000) { // Incorrect letters
-                    textMaterial = new THREE.MeshPhongMaterial({ 
-                        color: color,
-                        emissive: 0x330000,
-                        shininess: 100,
-                        specular: 0x111111
-                    });
-                } else { // Default or white
-                    textMaterial = new THREE.MeshPhongMaterial({ 
-                        color: color,
-                        emissive: 0x222222,
-                        shininess: 70,
-                        specular: 0x444444
-                    });
-                }
+                // Create a simpler material with stronger contrast
+                const textMaterial = new THREE.MeshPhongMaterial({ 
+                    color: color,
+                    shininess: 30,
+                    specular: 0xffffff
+                });
                 
                 const textMesh = new THREE.Mesh(textGeometry, textMaterial);
                 textMesh.position.set(x, y, z);
+                
+                // Add an outline or glow effect for better visibility
+                if (text.length < 10) { // Only for shorter words to avoid performance issues
+                    const outlineMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x000000,
+                        side: THREE.BackSide
+                    });
+                    
+                    const outlineMesh = new THREE.Mesh(textGeometry, outlineMaterial);
+                    outlineMesh.position.set(x, y, z);
+                    outlineMesh.scale.multiplyScalar(1.05); // Slightly larger
+                    group.add(outlineMesh);
+                }
+                
                 group.add(textMesh);
                 scene.add(group);
             });
@@ -457,7 +453,7 @@
             return "";
         }
 
-        // Function to add a new target word (modified for random positioning)
+        // Function to add a new target word (modified for better readability)
         function addTargetWord() {
             if (targetWord) return; // Ensure only one target word at a time
 
@@ -474,11 +470,15 @@
             categoryDisplay.textContent = "Category: " + currentCategory;
             
             const color = getCategoryColor(word);
-            const group = createText(word, 0.5, 0.1, x, y, 0, color);
+            
+            // Adjust size based on word length
+            const wordSize = Math.max(0.3, 0.6 - (word.length * 0.02));
+            
+            const group = createText(word, wordSize, 0.1, x, y, 0, color);
             
             // Add the target word with appropriate color and random speed based on level
             const baseSpeed = 0.01 + (level * 0.001);
-            const randomSpeed = baseSpeed + (Math.random() * 0.01); 
+            const randomSpeed = baseSpeed + (Math.random() * 0.005); // Reduced randomness for more readable movement
             
             targetWord = { 
                 word: word, 
@@ -526,18 +526,29 @@
             animateFeedback();
         }
 
-        // Function to update the typed word with enhanced visuals
+        // Function to update the typed word with enhanced visibility
         function updateTypedWord(char) {
             typedWord += char;
             updateTypedWordDisplay();
             checkWord();
         }
 
-        // Function to update the typed word display with enhanced visuals
+        // Function to update the typed word display with enhanced visibility
         function updateTypedWordDisplay() {
             scene.remove(typedWordGroup);
             typedWordGroup = new THREE.Group();
             scene.add(typedWordGroup);
+
+            // Use a background panel for better contrast
+            const panelGeometry = new THREE.PlaneGeometry(typedWord.length * 0.4 + 0.2, 0.8);
+            const panelMaterial = new THREE.MeshBasicMaterial({
+                color: 0x000033,
+                opacity: 0.7,
+                transparent: true
+            });
+            const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+            panel.position.set(-2 + (typedWord.length * 0.2), -2, -0.1);
+            typedWordGroup.add(panel);
 
             let xOffset = -2; // Starting x position for the typed word
 
@@ -552,9 +563,8 @@
                     }
                 }
                 
-                // Create individual letter meshes with slightly random y-positions for "bouncing" effect
-                const yVariation = Math.sin(Date.now() / 200 + i) * 0.05;
-                let letterGroup = createText(typedWord[i], 0.3, 0.05, xOffset, -2 + yVariation, 0, color);
+                // Create individual letter meshes with simpler settings
+                const letterGroup = createText(typedWord[i], 0.35, 0.05, xOffset, -2, 0, color);
                 typedWordGroup.add(letterGroup);
                 xOffset += 0.4; // Adjust spacing between letters
             }
@@ -690,11 +700,15 @@
 
             // Move and animate the target word
             if (targetWord && !targetWord.paused) {
+                // Smoother movement
                 targetWord.group.position.y += targetWord.speed;
                 
-                // Slight wavy motion based on horizontal position
-                const waveMagnitude = 0.003;
-                targetWord.group.position.x += Math.sin(Date.now() * 0.002) * waveMagnitude;
+                // Reduced wavy motion for better readability
+                const waveMagnitude = 0.001;
+                targetWord.group.position.x += Math.sin(Date.now() * 0.001) * waveMagnitude;
+
+                // Add a slight rotation to make it more dynamic but still readable
+                targetWord.group.rotation.y = Math.sin(Date.now() * 0.0005) * 0.05;
 
                 // Remove if it goes off-screen
                 if (targetWord.group.position.y > 2.5) {
