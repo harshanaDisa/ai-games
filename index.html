@@ -3,15 +3,657 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js Typing Tutor</title>
-    <link rel="stylesheet" href="style.css">
+    <title>German Word Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a2e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            margin: 20px auto;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.5);
+        }
+        
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+        }
+        
+        .ui-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        #score-display {
+            color: #ff8800;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        #combo-display {
+            color: #ffff00;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        #level-display {
+            color: #00ffff;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        #category-display {
+            color: #ffffff;
+            font-size: 16px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+        
+        .instructions {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 15px;
+            background-color: rgba(0, 0, 100, 0.3);
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 100, 255, 0.3);
+        }
+        
+        .instructions h2 {
+            color: #00ffff;
+            text-align: center;
+        }
+        
+        .instructions ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .instructions li:before {
+            content: "•";
+            color: #00ffff;
+            font-size: 20px;
+            position: absolute;
+            left: 0;
+            top: -2px;
+        }
+        
+        .game-title {
+            text-align: center;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            font-size: 2.5em;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <div id="game-container">
+    <h1 class="game-title">German Word Game</h1>
+    
+    <div class="game-container">
         <canvas id="game-canvas"></canvas>
-        <div id="score-display">Score: 0</div>
+        <div class="ui-container">
+            <div id="score-display">Score: 0</div>
+            <div id="combo-display">Combo: 0</div>
+            <div id="level-display">Level: 1</div>
+            <div id="category-display">Category: </div>
+        </div>
     </div>
+    
+    <div class="instructions">
+        <h2>How to Play</h2>
+        <ul>
+            <li>Type the word shown before it reaches the top of the screen</li>
+            <li>Words are color-coded by category to help you learn German vocabulary</li>
+            <li>Build combos by typing correctly in succession</li>
+            <li>The game gets faster as you reach higher levels</li>
+            <li>Press the keys corresponding to the German word (including umlauts: ä, ö, ü)</li>
+            <li>Use Backspace to delete if you make a mistake</li>
+            <li>Click anywhere on the page to enable sound effects</li>
+        </ul>
+    </div>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="main.js"></script>
+    <script>
+        // Set up the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas: document.getElementById('game-canvas'),
+            antialias: true 
+        });
+        renderer.setSize(800, 600);
+
+        // Enhanced scene setup with gradient background
+        const bgColor1 = new THREE.Color(0x1a1a3a); // Dark blue
+        const bgColor2 = new THREE.Color(0x3a1a5a); // Purple
+        scene.background = bgColor1;
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(0, 1, 5);
+        scene.add(directionalLight);
+
+        // Camera positioning
+        camera.position.z = 5;
+
+        // Add particle background for stars/sparkles
+        const particles = new THREE.Group();
+        scene.add(particles);
+
+        function createParticles() {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const sizes = [];
+            const colors = [];
+            
+            const colorOptions = [
+                new THREE.Color(0x5555ff), // Blue
+                new THREE.Color(0xff55ff), // Pink
+                new THREE.Color(0x55ffff), // Cyan
+                new THREE.Color(0xffff55)  // Yellow
+            ];
+            
+            for (let i = 0; i < 300; i++) {
+                vertices.push(
+                    (Math.random() - 0.5) * 20,  // x
+                    (Math.random() - 0.5) * 15,  // y
+                    (Math.random() - 0.5) * 10   // z
+                );
+                
+                sizes.push(Math.random() * 5 + 2);
+                
+                const color = colorOptions[Math.floor(Math.random() * colorOptions.length)];
+                colors.push(color.r, color.g, color.b);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 0.1,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.8,
+                vertexColors: true
+            });
+            
+            const points = new THREE.Points(geometry, material);
+            particles.add(points);
+        }
+
+        createParticles();
+
+        // --- Text Rendering with Enhanced Materials ---
+
+        // Function to create text geometry with more interesting materials
+        function createText(text, size, height, x, y, z, color = 0xffffff) {
+            const loader = new THREE.FontLoader();
+            const group = new THREE.Group();
+
+            loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                const textGeometry = new THREE.TextGeometry(text, {
+                    font: font,
+                    size: size,
+                    height: height,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.03,
+                    bevelSize: 0.02,
+                    bevelOffset: 0,
+                    bevelSegments: 5
+                });
+                
+                textGeometry.center();
+                
+                // Create a more interesting material based on the color
+                let textMaterial;
+                if (color === 0x00ff00) { // Correct letters
+                    textMaterial = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        emissive: 0x003300,
+                        shininess: 100,
+                        specular: 0x111111
+                    });
+                } else if (color === 0xff0000) { // Incorrect letters
+                    textMaterial = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        emissive: 0x330000,
+                        shininess: 100,
+                        specular: 0x111111
+                    });
+                } else { // Default or white
+                    textMaterial = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        emissive: 0x222222,
+                        shininess: 70,
+                        specular: 0x444444
+                    });
+                }
+                
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                textMesh.position.set(x, y, z);
+                group.add(textMesh);
+                scene.add(group);
+            });
+            return group;
+        }
+
+        // --- Game Variables ---
+        let targetWord = null; // Single target word
+        const wordCategories = {
+            animals: [
+                "Hund", "Katze", "Maus", "Vogel", "Fisch", 
+                "Pferd", "Kuh", "Schwein", "Affe", "Bär"
+            ],
+            objects: [
+                "Ball", "Buch", "Stift", "Tisch", "Stuhl", 
+                "Haus", "Auto", "Baum", "Blume", "Sonne", "Mond", "Stern"
+            ],
+            colors: [
+                "rot", "blau", "grün", "gelb", "schwarz", 
+                "weiß", "braun", "rosa"
+            ],
+            family: [
+                "Mama", "Papa", "Bruder", "Schwester", "Oma", "Opa"
+            ],
+            food: [
+                "Brot", "Milch", "Apfel", "Banane", "Käse", 
+                "Ei", "Saft", "Wasser"
+            ],
+            verbs: [
+                "sehen", "laufen", "spielen", "essen", "trinken",
+                "singen", "malen", "lesen", "schreiben", "lachen"
+            ],
+            sentences: [
+                "Ich sehe.", "Du siehst.", "Ich laufe.", "Du läufst.",
+                "Ich spiele.", "Ich esse.", "Ich trinke.", "Ich singe.",
+                "Ich male.", "Ich lese.", "Ich schreibe.", "Ich lache."
+            ]
+        };
+
+        // Flatten all categories into a single array
+        const words = Object.values(wordCategories).flat();
+
+        let typedWord = "";
+        let typedWordGroup = new THREE.Group(); 
+        scene.add(typedWordGroup);
+        let score = 0;
+        let combo = 0;
+        let level = 1;
+        let wordSpeed = 0.01;
+        const maxLevel = 10;
+        const scoreDisplay = document.getElementById('score-display');
+        const comboDisplay = document.getElementById('combo-display');
+        const levelDisplay = document.getElementById('level-display');
+        const categoryDisplay = document.getElementById('category-display');
+
+        // Game feedback visual effects
+        const feedbackGroup = new THREE.Group();
+        scene.add(feedbackGroup);
+
+        let wordTimeout; 
+        let pauseTimeout; 
+        let isPaused = false; 
+        let currentCategory = ""; // Track the current category
+
+        // --- Sound Effects ---
+        let audioContext;
+        let correctSound, wrongSound, levelUpSound;
+
+        function initAudio() {
+            try {
+                // Create audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create correct sound (happy tone)
+                function createCorrectSound() {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
+                    oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.2); // A5
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                }
+                
+                // Create wrong sound (sad tone)
+                function createWrongSound() {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(329.63, audioContext.currentTime); // E4
+                    oscillator.frequency.exponentialRampToValueAtTime(277.18, audioContext.currentTime + 0.2); // C#4
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                }
+                
+                // Create level up sound (ascending tone)
+                function createLevelUpSound() {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
+                    oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.1); // A5
+                    oscillator.frequency.exponentialRampToValueAtTime(1320, audioContext.currentTime + 0.2); // E6
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.4);
+                }
+                
+                // Assign functions
+                correctSound = createCorrectSound;
+                wrongSound = createWrongSound;
+                levelUpSound = createLevelUpSound;
+            } catch (e) {
+                console.error("Web Audio API is not supported in this browser");
+            }
+        }
+
+        // Initialize audio (will be triggered by user interaction)
+        document.addEventListener('click', function() {
+            if (!audioContext) {
+                initAudio();
+            }
+        }, { once: true });
+
+        // --- Enhanced Game Logic ---
+
+        // Function to determine the color of a word based on category
+        function getCategoryColor(word) {
+            if (wordCategories.animals.includes(word)) return 0x55ff55; // Green
+            if (wordCategories.objects.includes(word)) return 0x5555ff; // Blue
+            if (wordCategories.colors.includes(word)) return 0xff55ff; // Pink
+            if (wordCategories.family.includes(word)) return 0xff5555; // Red
+            if (wordCategories.food.includes(word)) return 0xffff55; // Yellow
+            if (wordCategories.verbs.includes(word)) return 0x55ffff; // Cyan
+            if (wordCategories.sentences.includes(word)) return 0xffffff; // White
+            return 0xffffff; // Default white
+        }
+
+        // Function to get category name
+        function getCategoryName(word) {
+            if (wordCategories.animals.includes(word)) return "Tiere (Animals)";
+            if (wordCategories.objects.includes(word)) return "Gegenstände (Objects)";
+            if (wordCategories.colors.includes(word)) return "Farben (Colors)";
+            if (wordCategories.family.includes(word)) return "Familie (Family)";
+            if (wordCategories.food.includes(word)) return "Essen (Food)";
+            if (wordCategories.verbs.includes(word)) return "Verben (Verbs)";
+            if (wordCategories.sentences.includes(word)) return "Sätze (Sentences)";
+            return "";
+        }
+
+        // Function to add a new target word (modified for delayed addition)
+        function addTargetWord() {
+            if (targetWord) return; // Ensure only one target word at a time
+
+            const word = words[Math.floor(Math.random() * words.length)];
+            // TEMPORARY DEBUGGING: Hardcode x and y
+            const x = 0; // Center horizontally
+            const y = 0; // Center vertically
+            const group = createText(word, 0.5, 0.1, x, y, 0);
+            targetWord = { word: word, group: group, speed: 0.01 + Math.random() * 0.02, paused: false }; // Add speed and paused flag
+        }
+
+        // Function to schedule the next word with decreasing time intervals based on level
+        function scheduleNextWord() {
+            clearTimeout(wordTimeout);
+            const timeInterval = Math.max(1000, 10000 - (level * 800)); // Decrease interval with each level
+            wordTimeout = setTimeout(() => {
+                addTargetWord();
+            }, timeInterval);
+        }
+
+        // Visual feedback animations
+        function showFeedback(message, color, duration = 2000) {
+            scene.remove(feedbackGroup);
+            feedbackGroup = new THREE.Group();
+            
+            const feedbackText = createText(message, 0.8, 0.2, 0, 0, 0, color);
+            feedbackGroup.add(feedbackText);
+            scene.add(feedbackGroup);
+            
+            // Animate the feedback (fade out)
+            let startTime = Date.now();
+            function animateFeedback() {
+                const elapsed = Date.now() - startTime;
+                if (elapsed < duration) {
+                    feedbackGroup.position.y = Math.sin(elapsed / 200) * 0.1;
+                    requestAnimationFrame(animateFeedback);
+                } else {
+                    scene.remove(feedbackGroup);
+                }
+            }
+            
+            animateFeedback();
+        }
+
+        // Function to update the typed word with enhanced visuals
+        function updateTypedWord(char) {
+            typedWord += char;
+            updateTypedWordDisplay();
+            checkWord();
+        }
+
+        // Function to update the typed word display with enhanced visuals
+        function updateTypedWordDisplay() {
+            scene.remove(typedWordGroup);
+            typedWordGroup = new THREE.Group();
+            scene.add(typedWordGroup);
+
+            let xOffset = -2; // Starting x position for the typed word
+
+            for (let i = 0; i < typedWord.length; i++) {
+                let color = 0xffffff; // Default white
+
+                if (targetWord && i < targetWord.word.length) {
+                    if (typedWord[i] === targetWord.word[i]) {
+                        color = 0x00ff00; // Green for correct
+                    } else {
+                        color = 0xff0000; // Red for incorrect
+                    }
+                }
+                
+                // Create individual letter meshes with slightly random y-positions for "bouncing" effect
+                const yVariation = Math.sin(Date.now() / 200 + i) * 0.05;
+                let letterGroup = createText(typedWord[i], 0.3, 0.05, xOffset, -2 + yVariation, 0, color);
+                typedWordGroup.add(letterGroup);
+                xOffset += 0.4; // Adjust spacing between letters
+            }
+        }
+
+        // Function to update game difficulty
+        function updateDifficulty() {
+            if (score >= level * 5) {
+                level = Math.min(maxLevel, level + 1);
+                levelDisplay.textContent = "Level: " + level;
+                wordSpeed = 0.01 + (level * 0.002);
+                
+                if (levelUpSound) levelUpSound();
+                showFeedback("Level " + level + "!", 0x00ffff);
+                
+                // Visual feedback for level up
+                const burstGeometry = new THREE.BufferGeometry();
+                const burstVertices = [];
+                for (let i = 0; i < 100; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * 3;
+                    burstVertices.push(
+                        Math.cos(angle) * radius, // x
+                        Math.sin(angle) * radius, // y
+                        0 // z
+                    );
+                }
+                burstGeometry.setAttribute('position', new THREE.Float32BufferAttribute(burstVertices, 3));
+                const burstMaterial = new THREE.PointsMaterial({
+                    size: 0.1,
+                    color: 0x00ffff,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const burst = new THREE.Points(burstGeometry, burstMaterial);
+                scene.add(burst);
+                
+                // Animate and remove the burst effect
+                setTimeout(() => {
+                    scene.remove(burst);
+                }, 2000);
+            }
+        }
+
+        // Function to check if the typed word matches the target word
+        function checkWord() {
+            if (targetWord && typedWord === targetWord.word) {
+                // Correct word typed!
+                console.log("Correct!");
+                score++;
+                combo++;
+                scoreDisplay.textContent = "Score: " + score;
+                comboDisplay.textContent = "Combo: " + combo;
+                
+                updateDifficulty();
+                
+                // Sound and visual feedback
+                if (correctSound) correctSound();
+                showFeedback("Correct!", 0x00ff00);
+                
+                // Remove the word
+                scene.remove(targetWord.group);
+                targetWord = null;
+
+                // Reset typed word
+                typedWord = "";
+                updateTypedWordDisplay();
+                scheduleNextWord();
+
+            } else if (targetWord && targetWord.word.startsWith(typedWord)) {
+                // Keep typing...
+                // Pause scrolling for time based on level
+                if (!isPaused) {
+                    isPaused = true;
+                    clearTimeout(pauseTimeout);
+                    pauseTimeout = setTimeout(() => {
+                        isPaused = false;
+                        if(targetWord) targetWord.paused = false;
+                    }, 10000 - (level * 500)); // Less pause time at higher levels
+                }
+                if(targetWord) targetWord.paused = true;
+            } else if (typedWord.length > 0) {
+                // Incorrect input: Reset typed word
+                combo = 0; // Reset combo
+                comboDisplay.textContent = "Combo: " + combo;
+                
+                // Sound and visual feedback
+                if (wrongSound) wrongSound();
+                showFeedback("Try again!", 0xff0000);
+                
+                typedWord = "";
+                updateTypedWordDisplay();
+            }
+        }
+
+        // --- Enhanced Event Listeners ---
+
+        document.addEventListener('keydown', (event) => {
+            const key = event.key;
+
+            // Initialize audio on first keypress
+            if (!audioContext) {
+                initAudio();
+            }
+
+            // Only handle alphanumeric keys and backspace
+            if (key.length === 1 && /[\w\säöüÄÖÜß\.,!?]/.test(key)) { // Allow German characters and punctuation
+                updateTypedWord(key);
+            } else if (key === 'Backspace') {
+                typedWord = typedWord.slice(0, -1);
+                updateTypedWordDisplay();
+                checkWord();
+            }
+        });
+
+        // --- Animation Loop with Enhanced Effects ---
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Background color animation
+            const t = Date.now() * 0.0005;
+            const r = Math.sin(t) * 0.1 + 0.1;
+            const g = Math.sin(t * 0.5) * 0.1 + 0.1;
+            const b = Math.sin(t * 0.3) * 0.1 + 0.3;
+            scene.background = new THREE.Color(r, g, b);
+
+            // Animate particles
+            particles.rotation.y += 0.0005;
+            particles.rotation.x += 0.0002;
+
+            // Move and animate the target word
+            if (targetWord && !targetWord.paused) {
+                targetWord.group.position.y += targetWord.speed;
+                
+                // Slight wavy motion
+                targetWord.group.position.x += Math.sin(Date.now() * 0.002) * 0.003;
+
+                // Remove if it goes off-screen
+                if (targetWord.group.position.y > 2.5) {
+                    scene.remove(targetWord.group);
+                    targetWord = null;
+                    combo = 0; // Reset combo
+                    comboDisplay.textContent = "Combo: " + combo;
+                    scheduleNextWord();
+                }
+            }
+
+            // Animate typed word (subtle bouncing effect)
+            if (typedWordGroup) {
+                typedWordGroup.position.y = Math.sin(Date.now() * 0.005) * 0.02;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Start the game
+        scheduleNextWord();
+        animate();
+    </script>
 </body>
 </html>
